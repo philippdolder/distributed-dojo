@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DistributedDojo", "DistributedDojo\DistributedDojo.csproj", "{9E989A16-8923-473E-B5E1-C451972D9839}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DistributedDojo.Facts", "DistributedDojo.Facts\DistributedDojo.Facts.csproj", "{4A3BCB3B-0EFD-4434-A945-BCC427C5BD17}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DistributedDojo.Specs", "DistributedDojo.Specs\DistributedDojo.Specs.csproj", "{DFCFBEE0-8204-49A4-B95E-53E351483E77}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{9E989A16-8923-473E-B5E1-C451972D9839}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9E989A16-8923-473E-B5E1-C451972D9839}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9E989A16-8923-473E-B5E1-C451972D9839}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9E989A16-8923-473E-B5E1-C451972D9839}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4A3BCB3B-0EFD-4434-A945-BCC427C5BD17}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4A3BCB3B-0EFD-4434-A945-BCC427C5BD17}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4A3BCB3B-0EFD-4434-A945-BCC427C5BD17}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4A3BCB3B-0EFD-4434-A945-BCC427C5BD17}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DFCFBEE0-8204-49A4-B95E-53E351483E77}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DFCFBEE0-8204-49A4-B95E-53E351483E77}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DFCFBEE0-8204-49A4-B95E-53E351483E77}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DFCFBEE0-8204-49A4-B95E-53E351483E77}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
