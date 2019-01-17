@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace DistributedDojo
 {
-    public class InMemoryBus : IMessageSession, IMessageHandlerContext
+    public class InMemoryBus : IMessagingEndpoint, IMessageHandlerContext
     {
         private readonly List<Subscription> subscriptions = new List<Subscription>();
         private readonly Queue<object> messages = new Queue<object>();
@@ -24,26 +24,47 @@ namespace DistributedDojo
         
         public Task Send(object message)
         {
+            bool NotACommand() => !message.GetType().Name.EndsWith("Command");
+            
+            if (NotACommand())
+            {
+                throw new ArgumentException($"Only commands allowed. `{message.GetType()}` is not a command.");
+            }
+            
             this.messages.Enqueue(message);
             return Task.CompletedTask;
         }
 
         public Task Publish(object message)
         {
+            bool NotAnEvent() => !message.GetType().Name.EndsWith("Event");
+
+            if (NotAnEvent())
+            {
+                throw new ArgumentException($"Only events allowed. `{message.GetType()}` is not an event.");
+            }
+            
             this.messages.Enqueue(message);
             return Task.CompletedTask;
         }
 
         private Task HandleMessage(object message)
         {
-            var subscription = this.subscriptions.Single(_ => _.Type == message.GetType());
+            var matchingSubscriptions = this.subscriptions.Where(_ => _.Type == message.GetType());
 
-            var createMethod = subscription.Factory.GetType().GetMethod("Create");
-            var handler = createMethod.Invoke(subscription.Factory, new object[0]);
-
-            var handleMethod = handler.GetType().GetMethod("Handle");
+            var tasks = new List<Task>();
             
-            return (Task)handleMethod.Invoke(handler, new object[] { message, this });
+            foreach (Subscription subscription in matchingSubscriptions)
+            {
+                var createMethod = subscription.Factory.GetType().GetMethod("Create");
+                var handler = createMethod.Invoke(subscription.Factory, new object[0]);
+
+                var handleMethod = handler.GetType().GetMethod("Handle");
+
+                tasks.Add((Task) handleMethod.Invoke(handler, new[] { message, this }));
+            }
+
+            return Task.WhenAll(tasks);
         }
 
         public Task Subscribe<TMessage>(IHandlerFactory<TMessage> factory) where TMessage : class
@@ -61,6 +82,11 @@ namespace DistributedDojo
                 await this.HandleMessage(message);
             }
         }
+    }
+
+    public interface IMessagingEndpoint : IMessageSession
+    {
+        Task Subscribe<TMessage>(IHandlerFactory<TMessage> factory) where TMessage : class;
     }
 
     public interface IHandlerFactory<in TMessage>

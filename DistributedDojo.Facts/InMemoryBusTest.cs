@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using FluentAssertions;
@@ -15,41 +16,47 @@ namespace DistributedDojo.Facts
         }
 
         [Fact]
-        public async Task SendsCommandToSubscriber()
+        public async Task SendsCommandToAllSubscribers()
         {
             var command = new Command();
 
-            var messageStore = new MessageStore<Command>();
-            await this.testee.Subscribe(new CommandHandlerFactory(messageStore));
+            var firstMessageStore = new MessageStore<Command>();
+            var secondMessageStore = new MessageStore<Command>();
+            await this.testee.Subscribe(new CommandHandlerFactory(firstMessageStore));
+            await this.testee.Subscribe(new SecondCommandHandlerFactory(secondMessageStore));
             await this.testee.Send(command);
             
             await this.testee.WaitForCompletion();
 
-            messageStore.Messages.Should().Contain(command);
+            firstMessageStore.Messages.Should().Contain(command);
+            secondMessageStore.Messages.Should().Contain(command);
         }
 
         [Fact]
-        public async Task PublishesEventToSubscriber()
+        public async Task PublishesEventToAllSubscribers()
         {
             var @event = new Event();
             
-            var messageStore = new MessageStore<Event>();
-            await this.testee.Subscribe(new EventHandlerFactory(messageStore));
+            var firstMessageStore = new MessageStore<Event>();
+            var secondMessageStore = new MessageStore<Event>();
+            await this.testee.Subscribe(new EventHandlerFactory(firstMessageStore));
+            await this.testee.Subscribe(new SecondEventHandlerFactory(secondMessageStore));
             await this.testee.Publish(@event);
             
             await this.testee.WaitForCompletion();
 
-            messageStore.Messages.Should().Contain(@event);
+            firstMessageStore.Messages.Should().Contain(@event);
+            secondMessageStore.Messages.Should().Contain(@event);
         }
 
         [Fact]
-        public async Task DeliversSubsequentMessages()
+        public async Task DeliversSubsequentMessage()
         {
             var command = new CommandPublishingEvent();
             
             var commandStore = new MessageStore<CommandPublishingEvent>();
             var eventStore = new MessageStore<Event>();
-            await this.testee.Subscribe(new CommandPublishingEventFactory(commandStore));
+            await this.testee.Subscribe(new CommandPublishingEventHandlerFactory(commandStore));
             await this.testee.Subscribe(new EventHandlerFactory(eventStore));
             await this.testee.Publish(command);
             await this.testee.WaitForCompletion();
@@ -57,18 +64,163 @@ namespace DistributedDojo.Facts
             eventStore.Messages.Should().HaveCount(1);
         }
 
-        private class CommandPublishingEventFactory : IHandlerFactory<CommandPublishingEvent>
+        [Fact]
+        public async Task ThrowsExceptionWhenSendingAnEvent()
         {
-            private readonly MessageStore<CommandPublishingEvent> store;
+            var @event = new Event();
 
-            public CommandPublishingEventFactory(MessageStore<CommandPublishingEvent> store)
+            Func<Task> act = () => this.testee.Send(@event);
+
+            await act.Should().ThrowAsync<ArgumentException>();
+        }
+
+        [Fact]
+        public async Task ThrowsExceptionWhenPublishingACommand()
+        {
+            var command = new Command();
+
+            Func<Task> act = () => this.testee.Publish(command);
+
+            await act.Should().ThrowAsync<ArgumentException>();
+        }
+
+        private class Command
+        {
+        }
+
+        private class Event
+        {
+        }
+
+        private class CommandPublishingEvent
+        {
+        }
+
+        private class CommandHandler : IHandleMessages<Command>
+        {
+            private readonly MessageStore<Command> store;
+
+            public CommandHandler(MessageStore<Command> store)
             {
                 this.store = store;
             }
 
-            public IHandleMessages<CommandPublishingEvent> Create()
+            public Task Handle(Command message, IMessageHandlerContext context)
             {
-                return new CommandPublishingEventHandler(this.store);
+                this.store.Add(message);
+
+                return Task.CompletedTask;
+            }
+        }
+
+        private class CommandHandlerFactory : IHandlerFactory<Command>
+        {
+            private readonly MessageStore<Command> store;
+
+            public CommandHandlerFactory(MessageStore<Command> store)
+            {
+                this.store = store;
+            }
+
+            public IHandleMessages<Command> Create()
+            {
+                return new CommandHandler(this.store);
+            }
+        }
+
+        private class SecondCommandHandler : IHandleMessages<Command>
+        {
+            private readonly MessageStore<Command> store;
+
+            public SecondCommandHandler(MessageStore<Command> store)
+            {
+                this.store = store;
+            }
+
+            public Task Handle(Command message, IMessageHandlerContext context)
+            {
+                this.store.Add(message);
+
+                return Task.CompletedTask;
+            }
+        }
+
+        private class SecondCommandHandlerFactory : IHandlerFactory<Command>
+        {
+            private readonly MessageStore<Command> store;
+
+            public SecondCommandHandlerFactory(MessageStore<Command> store)
+            {
+                this.store = store;
+            }
+
+            public IHandleMessages<Command> Create()
+            {
+                return new SecondCommandHandler(this.store);
+            }
+        }
+
+        private class EventHandler : IHandleMessages<Event>
+        {
+            private readonly MessageStore<Event> store;
+
+            public EventHandler(MessageStore<Event> store)
+            {
+                this.store = store;
+            }
+
+            public Task Handle(Event message, IMessageHandlerContext context)
+            {
+                this.store.Add(message);
+
+                return Task.CompletedTask;
+            }
+        }
+
+        private class EventHandlerFactory : IHandlerFactory<Event>
+        {
+            private readonly MessageStore<Event> store;
+
+            public EventHandlerFactory(MessageStore<Event> store)
+            {
+                this.store = store;
+            }
+
+            public IHandleMessages<Event> Create()
+            {
+                return new EventHandler(this.store);
+            }
+        }
+
+        private class SecondEventHandler : IHandleMessages<Event>
+        {
+            private readonly MessageStore<Event> store;
+
+            public SecondEventHandler(MessageStore<Event> store)
+            {
+                this.store = store;
+            }
+
+            public Task Handle(Event message, IMessageHandlerContext context)
+            {
+                this.store.Add(message);
+
+                return Task.CompletedTask;
+            }
+        }
+
+        private class SecondEventHandlerFactory : IHandlerFactory<Event>
+        {
+            private readonly MessageStore<Event> store;
+
+            public SecondEventHandlerFactory(MessageStore<Event> store)
+            {
+                this.store = store;
+            }
+
+            public IHandleMessages<Event> Create()
+            {
+                return new SecondEventHandler(this.store);
             }
         }
 
@@ -89,75 +241,18 @@ namespace DistributedDojo.Facts
             }
         }
 
-        private class CommandPublishingEvent
+        private class CommandPublishingEventHandlerFactory : IHandlerFactory<CommandPublishingEvent>
         {
-        }
+            private readonly MessageStore<CommandPublishingEvent> store;
 
-        private class EventHandlerFactory : IHandlerFactory<Event>
-        {
-            private readonly MessageStore<Event> store;
-
-            public EventHandlerFactory(MessageStore<Event> store)
+            public CommandPublishingEventHandlerFactory(MessageStore<CommandPublishingEvent> store)
             {
                 this.store = store;
             }
 
-            public IHandleMessages<Event> Create()
+            public IHandleMessages<CommandPublishingEvent> Create()
             {
-                return new EventHandler(this.store);
-            }
-        }
-
-        private class EventHandler : IHandleMessages<Event>
-        {
-            private readonly MessageStore<Event> store;
-
-            public EventHandler(MessageStore<Event> store)
-            {
-                this.store = store;
-            }
-
-            public Task Handle(Event message, IMessageHandlerContext context)
-            {
-                this.store.Add(message);
-                
-                return Task.CompletedTask;
-            }
-        }
-        
-        private class Command
-        {
-        }
-
-        private class CommandHandler : IHandleMessages<Command>
-        {
-            private readonly MessageStore<Command> store;
-
-            public CommandHandler(MessageStore<Command> store)
-            {
-                this.store = store;
-            }
-
-            public Task Handle(Command message, IMessageHandlerContext context)
-            {
-                this.store.Add(message);
-                
-                return Task.CompletedTask;
-            }
-        }
-        
-        private class CommandHandlerFactory : IHandlerFactory<Command>
-        {
-            private readonly MessageStore<Command> store;
-
-            public CommandHandlerFactory(MessageStore<Command> store)
-            {
-                this.store = store;
-            }
-
-            public IHandleMessages<Command> Create()
-            {
-                return new CommandHandler(this.store);
+                return new CommandPublishingEventHandler(this.store);
             }
         }
 
@@ -168,10 +263,6 @@ namespace DistributedDojo.Facts
             public IReadOnlyList<TMessage> Messages => this.messages.AsReadOnly();
             
             public void Add(TMessage message) => this.messages.Add(message);
-        }
-
-        private class Event
-        {
         }
     }
 }
